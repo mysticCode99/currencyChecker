@@ -1,63 +1,55 @@
 
 import urllib.request
-import re
+import re, json
+from pprint import pprint
 
-req = urllib.request.Request('https://rate.am', headers={'User-Agent': 'Mozilla/5.0'})
-html = urllib.request.urlopen(req).read()
-
-class Bank(object):
-    def __init__(self, name) -> None:
-        self.name = name
-        self.currences = {}
-
-    def set_currence(self, currence, values=()):
-        '''Adding currence value to currences dict'''
-        self.currences[currence] = values
-
-    def get_currence_sell_value(self, currence):
-        ''''''
-        return self.currences[currence][0]
-
-    def get_currence_buy_value(self, currence):
-        ''''''
-        return self.currences[currence][1]
-    
-    def get_currence(self, currence):
-        '''Return all values for required currence'''
-        if self.currences.get(currence):
-            return self.currences[currence]
-        else:
-            return None
+from bank_parsers import Bank
 
 def collect_banks():
     '''Collects Bamks information and returns banks object list'''
+    with open('bank_list.json', 'r') as f:
+        banks_data = json.load(f)
+    # pprint(banks_data)
     banks = []
-    tr_reg_res = re.findall(r'<tr\s*id\s*=\s*[^>]*>(.*?)</tr>', str(html))
-    for tr in tr_reg_res:
-        res = re.search(r'<img.*?alt\s*=\s*[\'"\\]*([^\'"\\]*)', tr)
-        bank = Bank(res.group(1))
-        del res
-        res = re.findall(r'<td>.*?([\d\.]+).*?<\/td>', tr)
-        if res:
-            bank.set_currence('usd', (res[3], res[4]))
-            bank.set_currence('eur', (res[5], res[6]))
-            bank.set_currence('rub', (res[7], res[8]))
+    for bank_data in banks_data['banks']:
+        bank = Bank(bank_data["name"])
+        bank.set_data(bank_data)
         banks.append(bank)
-    return banks
+        print(bank)
+        bank.parse_page()
 
-def main():
-    ''' Collects and writes table in txt format file'''
+def parse_rate_page():
+    '''
+    Parses http://rate.am/ page
+    Collects and writes table in txt format file
+    '''
+    home_page_link = 'https://rate.am'
+    exchanges_table_link = 'http://rate.am/am/armenian-dram-exchange-rates/exchange-points/cash'
+    req = urllib.request.Request(home_page_link, headers={'User-Agent': 'Mozilla/5.0'})
+    html = urllib.request.urlopen(req).read()
     tr_reg_res = re.findall(r'<tr\s*id\s*=\s*[^>]*>(.*?)</tr>', str(html))
     with open('pageInfo', 'w') as f:
-        f.write('+' + '-' * 79 + '+\n')
+        start_str = '+' + '-' * 79
+        print(start_str)
+        f.write(start_str + "\n")
         for tr in tr_reg_res:
             res = re.search(r'<img.*?alt\s*=\s*[\'"\\]*([^\'"\\]*)', tr)
             bank_name = res.group(1)
             del res
             res = re.findall(r'<td>.*?([\d\.]+).*?<\/td>', tr)
             if res:
-                f.write(f'|{bank_name:^25}|{res[3]:^8}|{res[4]:^8}|{res[5]:^8}|{res[6]:^8}|{res[7]:^8}|{res[8]:^8}|\n')
-        f.write('+' + '-' * 79 + '+')
+                res_str = '|{:^25}|{:^8}|{:^8}|{:^8}|{:^8}|{:^8}|{:^8}|'.format(
+                    bank_name, res[3], res[4], res[5], res[6], res[7], res[8]
+                )
+                print(res_str)
+                f.write(res_str + "\n")
+        print(start_str)
+        f.write(start_str + "\n")
+
+def main():
+    ''' Collects and writes table in txt format file'''
+    # parse_rate_page()
+    collect_banks()
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,10 @@
+{
+    "parsers package loctation" : "./bank_parsers",
+    "banks" : [
+        {
+            "name" : "ID bank",
+            "link" : "https://idbank.am/",
+            "parser" : "id_bank_parser"
+        }
+    ]
+}
