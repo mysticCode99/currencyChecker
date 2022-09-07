@@ -1,5 +1,5 @@
 import urllib.request
-import re, json
+import re, json, logging
 from pprint import pprint
 
 RATE_AM_BANKS_LINK = 'https://rate.am'
@@ -36,18 +36,24 @@ def parse_rate_page():
     
     for bank in banks:
         parse_bank_cont_page(bank)
+        print(f'''{bank.name} --- {bank.offical_link}''')
         parse_bank_page(bank)
         print()
 
 def parse_bank_page(bank):
-    req = urllib.request.Request(RATE_AM_BANKS_LINK, headers={'User-Agent': 'Mozilla/5.0'})
-    html = urllib.request.urlopen(req).read()
-    exchange_table_reg = r'''<\s*table.*?class\s*=\s*["'].*?exchange__table.*?["']\S*?>([\S\s]*?)<\s*\/table\s*>'''
-    exchange_table_reg = r'''(<\s*table.*?class\s*=\s*["'].*?exchange.*?>([\S\s]*?)<\s*\/table\s*>)'''
-    res = re.search(exchange_table_reg, str(html))
-    if res:
-        print(bank.name, res)
-        print(res.group())
+    req = urllib.request.Request(bank.offical_link, headers={'User-Agent': 'Mozilla/5.0'})
+    try:
+        html = urllib.request.urlopen(req).read()
+    except urllib.error.URLError as err:
+        logging.error(f"cann't read page {bank.offical_link}")
+        logging.error(err)
+        return
+    html = html.decode(encoding='UTF-8')
+    with open(f'./bank_htmls/{bank.name}.html', 'w') as o:
+        o.write(html)
+    # exchange_table_reg = r'''<\s*table.*?class\s*=\s*["'].*?exchange__table.*?["']\S*?>([\S\s]*?)<\s*\/table\s*>'''
+    # exchange_table_reg = r'''(<\s*table.*?class\s*=\s*["'].*?exchange.*?>([\S\s]*?)<\s*\/table\s*>)'''
+    # res = re.search(exchange_table_reg, str(html))
 
 def parse_bank_cont_page(bank):
     '''
@@ -55,17 +61,17 @@ def parse_bank_cont_page(bank):
     '''
     req = urllib.request.Request(bank.cont_page_link, headers={'User-Agent': 'Mozilla/5.0'})
     html = urllib.request.urlopen(req).read()
+    html = html.decode(encoding='UTF-8')
     data_table_regex = r'''<\s*table.*class="bankpagebankcontact">([\S\s]*?)<\/table>'''
     data_table = re.search(data_table_regex, str(html)).group(1)
-    with open('res', 'w') as o:
-        o.write(data_table)
-    # print(data_table)
-    read_link_reg = r'.*<a.*?href\s*=\s*[\'"\\]*([^\'"\\]*)'
+    # with open('res', 'w') as o:
+    #     o.write(data_table)
+    # read_link_reg = r'.*<a.*?href\s*=\s*[\'"\\]*([^\'"\\]*)'
+    read_link_reg = r'Կայք[\S\s]*href="(.*?)"'
     link = re.search(read_link_reg, data_table).group(1)
-    print(f'''{bank.name} --- {bank.cont_page_link}
-{link}''')
+    # print(f'''{bank.name} --- {bank.cont_page_link}\n{link}''')
     del html
-    bank.link = link
+    bank.offical_link = link
 
 def main():
     ''' Collects and writes table in txt format file'''
